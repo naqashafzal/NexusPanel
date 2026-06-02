@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      String   @default("HOSTING_USER") // SUPER_ADMIN, ADMIN, RESELLER, HOSTING_USER, READ_ONLY
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  accounts  Account[]
+  sessions  Session[]
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Account {
+  id               String   @id @default(uuid())
+  username         String   @unique
+  ownerId          String
+  owner            User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  packageId        String?
+  package          HostingPackage? @relation(fields: [packageId], references: [id])
+  primaryDomain    String?
+  homeDirectory    String
+  status           String   @default("active") // active, suspended, pending, deleted
+  diskLimitMb      Int      @default(0)
+  bandwidthLimitMb Int      @default(0)
+  maxDomains       Int      @default(0)
+  maxDatabases     Int      @default(0)
+  maxApps          Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  applications     Application[]
+  domains          Domain[]
+  websites         Website[]
+}
+
+model HostingPackage {
+  id             String    @id @default(uuid())
+  name           String
+  diskLimit      Int
+  bandwidthLimit Int
+  maxDomains     Int
+  maxSubdomains  Int
+  maxDatabases   Int
+  maxNodeApps    Int
+  maxPhpWebsites Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  accounts       Account[]
+}
+
+model Application {
+  id              String   @id @default(uuid())
+  accountId       String
+  account         Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  serverId        String?
+  name            String
+  slug            String
+  type            String   // nodejs, nextjs, nestjs, etc.
+  repoUrl         String?
+  branch          String?
+  deployMethod    String   // github, zip, dockerfile
+  nodeVersion     String?
+  packageManager  String?
+  installCommand  String?
+  buildCommand    String?
+  startCommand    String?
+  internalPort    Int?
+  healthCheckPath String?
+  status          String   @default("creating")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  domains         Domain[]
+}
+
+model Domain {
+  id           String   @id @default(uuid())
+  accountId    String
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  appId        String?
+  application  Application? @relation(fields: [appId], references: [id])
+  websiteId    String?
+  website      Website? @relation(fields: [websiteId], references: [id])
+  domain       String   @unique
+  type         String   // root, subdomain, addon
+  isPrimary    Boolean  @default(false)
+  documentRoot String?
+  sslEnabled   Boolean  @default(false)
+  sslStatus    String?
+  dnsStatus    String?
+  forceHttps   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Website {
+  id           String   @id @default(uuid())
+  accountId    String
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type         String   // static, php, wordpress
+  documentRoot String
+  phpVersion   String?
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  domains      Domain[]
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
