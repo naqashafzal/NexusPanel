@@ -9,7 +9,7 @@ This document outlines the entire history of our development process, a detailed
 **1. Project Inception & Architecture Planning**
 - **Vision:** Build a modern, cPanel-like hosting platform (like Vercel/Coolify) designed for Node.js apps and AI-agents on custom VPS servers.
 - **Tech Stack Chosen:** Turborepo (Monorepo), Next.js (Frontend), NestJS (Backend API), Node.js/Dockerode (Server Agent), PostgreSQL, Redis, and Traefik (Proxy).
-- **Naming:** We decided on the name **NexusPanel**.
+- **Naming:** We decided on the name **NexusPanel** (later moved to the `HostsOS` directory).
 
 **2. Core Infrastructure & Scaffolding**
 - We initialized the monorepo workspace and configured `pnpm`.
@@ -30,6 +30,11 @@ This document outlines the entire history of our development process, a detailed
 - We integrated **WebSocket Live Logs**, streaming raw Docker container logs directly to the Next.js frontend terminal UI.
 - We finalized the **Domain Management** logic, allowing the Agent to map custom domains to Traefik routers for automatic SSL.
 
+**6. Lifecycle & Advanced Deployments (Phase 3)**
+- We established a **Bi-directional Command Tunnel** over WebSockets, allowing the Next.js panel to securely push commands (deploy, stop, restart, delete, backup) directly to the Server Agent without needing open firewall ports.
+- We added endpoints for **ZIP File Uploads** (using Multer and `extract-zip`) and **GitHub Webhooks** to trigger automated container rebuilds.
+- We implemented **Database Backups** allowing the Agent to automatically dump and tarball database volumes to disk on command.
+
 ---
 
 ## ✅ What is Complete (Implemented)
@@ -48,6 +53,7 @@ This document outlines the entire history of our development process, a detailed
 - [x] Environment Variables Manager (Secure inputs)
 - [x] Live Terminal Logs UI (WebSockets)
 - [x] Managed Databases UI
+- [x] Container Lifecycle Controls (Start/Stop/Restart/Delete buttons)
 
 ### NestJS Backend API
 - [x] Auth Module
@@ -56,6 +62,9 @@ This document outlines the entire history of our development process, a detailed
 - [x] Environment Variables Encryption API (AES-256-GCM)
 - [x] WebSockets Log Gateway (`@nestjs/platform-socket.io`)
 - [x] Agent Heartbeat & Registration Receiver
+- [x] ZIP File Uploads (`/applications/:id/upload`)
+- [x] GitHub Webhooks (`/webhooks/github`)
+- [x] Database Backups (`/databases/:id/backup`)
 
 ### Node.js Server Agent
 - [x] Secure API Registration & Metrics Heartbeat (CPU/RAM tracking)
@@ -65,6 +74,9 @@ This document outlines the entire history of our development process, a detailed
 - [x] In-memory AES Decryption of Environment Variables
 - [x] Live Socket.io Log Streamer
 - [x] Auto-provisioning logic for PostgreSQL, MySQL, and Redis
+- [x] Bi-directional Command Tunnel Listener
+- [x] ZIP Extraction and Image Building
+- [x] Database Volume Tarball Backups
 
 ---
 
@@ -72,15 +84,9 @@ This document outlines the entire history of our development process, a detailed
 
 While the foundational MVP logic is written, these specific features from your original prompt require further integration and polishing to be fully operational in production:
 
-### 1. Application Deployment Features
-- **ZIP File Uploads:** The Agent currently clones from GitHub, but the logic to accept a ZIP file upload, extract it, and build the Docker image needs to be written.
-- **Webhook Integration:** We need to set up GitHub webhooks so that pushing to a repository automatically triggers the Agent to rebuild the container.
-- **Stop/Restart/Delete Buttons:** The UI buttons exist, but they need to be wired up to the API to trigger the Agent to actually pause or wipe the Docker containers.
+### 1. Infrastructure & Networking
+- [ ] **Multiple Server Deployments:** While the API supports multiple servers, the frontend needs polish to select exactly *which* server a specific app or database gets deployed to during the creation flow.
 
-### 2. Infrastructure & Networking
-- **Basic Backups:** Logic needs to be written for the Agent to automatically dump PostgreSQL/Redis volumes to a secure location on a cron schedule.
-- **Multiple Server Deployments:** While the API supports multiple servers, the frontend needs polish to select exactly *which* server a specific app or database gets deployed to during the creation flow.
-
-### 3. Polish & Edge Cases
-- **Installation Commands in UI:** The frontend needs a screen that generates the exact curl/bash command a user should copy-paste to attach a new VPS to the panel.
-- **Error Handling:** Enhanced error reporting in the UI if an Agent deployment fails or a Docker image fails to build.
+### 2. Polish & Edge Cases
+- [ ] **Installation Commands in UI:** The frontend needs a screen that generates the exact curl/bash command a user should copy-paste to attach a new VPS to the panel.
+- [ ] **Error Handling:** Enhanced error reporting in the UI if an Agent deployment fails or a Docker image fails to build.

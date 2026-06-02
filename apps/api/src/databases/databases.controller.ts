@@ -21,4 +21,9 @@ export class DatabasesController {
   remove(@Param('id') id: string, @Request() req) {
     return this.databasesService.remove(id, req.user.id);
   }
+
+  @Post(':id/backup')
+  backup(@Param('id') id: string, @Request() req) {
+    return this.databasesService.backup(id, req.user.id);
+  }
 }

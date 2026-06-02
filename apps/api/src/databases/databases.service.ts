@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CryptoUtil } from '../utils/crypto.util';
+import { LogsGateway } from '../logs/logs.gateway';
 
 @Injectable()
 export class DatabasesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private logsGateway: LogsGateway) {}
 
   async findAll(userId: string) {
     return this.prisma.database.findMany({
@@ -47,5 +48,17 @@ export class DatabasesService {
     return this.prisma.database.delete({
       where: { id, userId },
     });
+  }
+
+  async backup(id: string, userId: string) {
+    const db = await this.prisma.database.findUnique({
+      where: { id, userId },
+      include: { server: true }
+    });
+    if (!db) throw new NotFoundException('Database not found');
+
+    // Trigger backup command on the Agent
+    this.logsGateway.sendCommandToAgent(db.server.id, 'backup_db', db);
+    return { success: true, message: 'Backup initiated' };
   }
 }
