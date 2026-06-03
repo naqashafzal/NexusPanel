@@ -101,6 +101,10 @@ model Application {
   startCommand    String?
   internalPort    Int?
   healthCheckPath String?
+  pythonVersion   String?
+  appRoot         String?
+  startupFile     String?
+  entryPoint      String?
   status          String   @default("creating")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

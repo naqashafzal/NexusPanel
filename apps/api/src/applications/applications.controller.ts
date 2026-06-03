@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApplicationsService } from './applications.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -13,6 +13,20 @@ export class ApplicationsController {
     return this.applicationsService.findAll(req.user.id);
   }
 
+  // --- Specific sub-routes MUST come before @Get(':id') to avoid being swallowed ---
+
+  @Get(':id/deploy-logs')
+  getDeployLogs(@Param('id') id: string, @Request() req) {
+    return this.applicationsService.getDeployLogs(id, req.user.id);
+  }
+
+  @Get(':id/url')
+  getAppUrl(@Param('id') id: string, @Request() req) {
+    return this.applicationsService.getAppUrl(id, req.user.id);
+  }
+
+  // --- Generic :id route ---
+
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
     return this.applicationsService.findOne(id, req.user.id);
@@ -26,15 +40,18 @@ export class ApplicationsController {
   @Post(':id/upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadZip(@Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Request() req) {
-    // Save to some persistent storage, e.g. S3, or locally
-    // For MVP, we pretend it's saved locally and pass the URL to the Agent
-    const mockFileUrl = `http://localhost:4000/uploads/${file.originalname}`;
-    return this.applicationsService.executeCommand(id, req.user.id, 'deploy_app_zip', { zipUrl: mockFileUrl });
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.applicationsService.deployZip(id, req.user.id, file);
   }
 
   @Post(':id/github')
   deployGithub(@Param('id') id: string, @Body() body: { repoUrl: string; branch: string }, @Request() req) {
     return this.applicationsService.deployGithub(id, req.user.id, body.repoUrl, body.branch);
+  }
+
+  @Post(':id')
+  update(@Param('id') id: string, @Body() updateDto: any, @Request() req) {
+    return this.applicationsService.update(id, req.user.id, updateDto);
   }
 
   @Post(':id/start')

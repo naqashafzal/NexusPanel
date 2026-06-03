@@ -7,34 +7,40 @@ export class FilesService {
   private baseDir: string;
 
   constructor() {
-    // For MVP demonstration, we will let the user browse the NexusPanel source code itself.
-    // In production, this would communicate with the agent to read /var/www/...
-    this.baseDir = process.cwd();
+    // Browse the full VPS filesystem from root
+    this.baseDir = '/';
   }
 
   private resolvePath(reqPath: string) {
-    const safePath = path.normalize(reqPath || '/').replace(/^(\.\.(\/|\\|$))+/, '');
-    const absolutePath = path.join(this.baseDir, safePath);
-    if (!absolutePath.startsWith(this.baseDir)) {
-      throw new BadRequestException('Invalid path');
-    }
+    // Normalize and ensure path stays within baseDir (/)
+    const normalized = path.normalize(reqPath || '/');
+    // On Linux with baseDir='/', join will just return the normalized path
+    const absolutePath = normalized.startsWith('/') ? normalized : path.join('/', normalized);
     return absolutePath;
   }
 
   async listFiles(dirPath: string) {
-    const target = this.resolvePath(dirPath);
+    const target = this.resolvePath(dirPath || '/');
     if (!fs.existsSync(target)) {
       throw new BadRequestException('Directory not found');
     }
 
-    const items = fs.readdirSync(target, { withFileTypes: true });
-    
-    // Sort directories first, then files
-    const result = items.map(item => ({
-      name: item.name,
-      isDirectory: item.isDirectory(),
-      path: path.join(dirPath || '/', item.name).replace(/\\/g, '/'),
-    }));
+    let items: fs.Dirent[];
+    try {
+      items = fs.readdirSync(target, { withFileTypes: true });
+    } catch (e) {
+      // Some system dirs may not be readable, return empty
+      return [];
+    }
+
+    const result = items.map(item => {
+      const itemPath = path.join(target === '/' ? '' : target, item.name).replace(/\\/g, '/') || '/';
+      return {
+        name: item.name,
+        isDirectory: item.isDirectory(),
+        path: itemPath.startsWith('/') ? itemPath : '/' + itemPath,
+      };
+    });
 
     return result.sort((a, b) => {
       if (a.isDirectory === b.isDirectory) return a.name.localeCompare(b.name);
@@ -47,7 +53,11 @@ export class FilesService {
     if (!fs.existsSync(target) || fs.statSync(target).isDirectory()) {
       throw new BadRequestException('File not found or is a directory');
     }
-    return fs.readFileSync(target, 'utf-8');
+    try {
+      return fs.readFileSync(target, 'utf-8');
+    } catch (e) {
+      throw new BadRequestException('Cannot read file: permission denied');
+    }
   }
 
   async writeFile(filePath: string, content: string) {
@@ -55,7 +65,11 @@ export class FilesService {
     if (fs.existsSync(target) && fs.statSync(target).isDirectory()) {
       throw new BadRequestException('Cannot overwrite a directory');
     }
-    fs.writeFileSync(target, content, 'utf-8');
+    try {
+      fs.writeFileSync(target, content, 'utf-8');
+    } catch (e) {
+      throw new BadRequestException('Cannot write file: permission denied');
+    }
     return { success: true };
   }
 }
