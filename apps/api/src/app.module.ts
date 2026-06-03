@@ -10,6 +10,7 @@ import { DomainsModule } from './domains/domains.module';
 import { EnvModule } from './env/env.module';
 import { DatabasesModule } from './databases/databases.module';
 import { ServersModule } from './servers/servers.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ServersModule } from './servers/servers.module';
     EnvModule,
     DatabasesModule,
     ServersModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
