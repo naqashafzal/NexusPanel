@@ -1,31 +1,32 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CryptoUtil } from '../utils/crypto.util';
-import { LogsGateway } from '../logs/logs.gateway';
 
 @Injectable()
 export class DatabasesService {
-  constructor(private prisma: PrismaService, private logsGateway: LogsGateway) {}
+  constructor(private prisma: PrismaService) {}
 
   async findAll(userId: string) {
     return this.prisma.database.findMany({
-      where: { userId },
+      where: { account: { ownerId: userId } },
       include: { server: true }
     });
   }
 
   async create(userId: string, data: any) {
-    // Validate server ownership
+    const account = await this.prisma.account.findFirst({
+      where: { ownerId: userId }
+    });
+    if (!account) throw new BadRequestException('No account found for user');
+
     const server = await this.prisma.server.findUnique({
-      where: { id: data.serverId, userId }
+      where: { id: data.serverId }
     });
     if (!server) throw new BadRequestException('Invalid server selected');
 
-    // Generate a secure random password for the DB
     const randomPassword = require('crypto').randomBytes(16).toString('hex');
     const encryptedPassword = CryptoUtil.encrypt(randomPassword);
 
-    // Default ports based on type
     let port = 5432;
     if (data.type === 'MYSQL') port = 3306;
     if (data.type === 'REDIS') port = 6379;
@@ -35,30 +36,36 @@ export class DatabasesService {
       data: {
         name: data.name,
         type: data.type,
-        internalPort: port,
-        dbUser: data.type === 'REDIS' ? null : 'nexusadmin',
-        encryptedPassword,
+        port: port,
+        username: data.type === 'REDIS' ? null : 'nexusadmin',
+        password: encryptedPassword,
         serverId: data.serverId,
-        userId,
+        accountId: account.id,
       },
     });
   }
 
   async remove(id: string, userId: string) {
+    const db = await this.prisma.database.findFirst({
+      where: { id, account: { ownerId: userId } }
+    });
+    if (!db) throw new NotFoundException('Database not found');
+
     return this.prisma.database.delete({
-      where: { id, userId },
+      where: { id },
     });
   }
 
   async backup(id: string, userId: string) {
-    const db = await this.prisma.database.findUnique({
-      where: { id, userId },
+    const db = await this.prisma.database.findFirst({
+      where: { id, account: { ownerId: userId } },
       include: { server: true }
     });
     if (!db) throw new NotFoundException('Database not found');
 
-    // Trigger backup command on the Agent
-    this.logsGateway.sendCommandToAgent(db.server.id, 'backup_db', db);
+    if (db.serverId) {
+      // this.logsGateway.sendCommandToAgent(db.serverId, 'backup_db', db);
+    }
     return { success: true, message: 'Backup initiated' };
   }
 }

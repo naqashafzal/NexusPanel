@@ -7,7 +7,7 @@ export class EnvService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(applicationId: string, userId: string) {
-    const app = await this.prisma.application.findUnique({ where: { id: applicationId, userId } });
+    const app = await this.prisma.application.findFirst({ where: { id: applicationId, account: { ownerId: userId } } });
     if (!app) throw new NotFoundException('Application not found');
 
     const vars = await this.prisma.environmentVariable.findMany({ where: { applicationId } });
@@ -23,10 +23,10 @@ export class EnvService {
   }
 
   async createOrUpdate(applicationId: string, userId: string, variables: { key: string, value: string }[]) {
-    const app = await this.prisma.application.findUnique({ where: { id: applicationId, userId } });
+    const app = await this.prisma.application.findFirst({ where: { id: applicationId, account: { ownerId: userId } } });
     if (!app) throw new NotFoundException('Application not found');
 
-    const results = [];
+    const results: any[] = [];
     for (const v of variables) {
       const encryptedValue = CryptoUtil.encrypt(v.value);
       
@@ -37,14 +37,14 @@ export class EnvService {
       if (existing) {
         const updated = await this.prisma.environmentVariable.update({
           where: { id: existing.id },
-          data: { encryptedValue },
+          data: { value: encryptedValue },
         });
         results.push(updated);
       } else {
         const created = await this.prisma.environmentVariable.create({
           data: {
             key: v.key,
-            encryptedValue,
+            value: encryptedValue,
             applicationId,
           },
         });
@@ -55,7 +55,7 @@ export class EnvService {
   }
 
   async remove(id: string, applicationId: string, userId: string) {
-    const app = await this.prisma.application.findUnique({ where: { id: applicationId, userId } });
+    const app = await this.prisma.application.findFirst({ where: { id: applicationId, account: { ownerId: userId } } });
     if (!app) throw new NotFoundException('Application not found');
 
     return this.prisma.environmentVariable.delete({

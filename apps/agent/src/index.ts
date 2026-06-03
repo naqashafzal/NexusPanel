@@ -11,7 +11,7 @@ app.use(express.json());
 const docker = new Docker();
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'HostSphere Agent' });
+  res.json({ status: 'ok', service: 'NexusPanel Agent' });
 });
 
 app.get('/docker/info', async (req, res) => {

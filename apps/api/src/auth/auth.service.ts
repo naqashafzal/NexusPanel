@@ -26,6 +26,17 @@ export class AuthService {
         name: data.name,
         password: hashedPassword,
         role,
+        accounts: {
+          create: {
+            username: data.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Math.floor(Math.random() * 1000),
+            homeDirectory: `/home/nexus`,
+            diskLimitMb: 10000,
+            bandwidthLimitMb: 100000,
+            maxDomains: 100,
+            maxDatabases: 100,
+            maxApps: 100,
+          }
+        }
       },
     });
     

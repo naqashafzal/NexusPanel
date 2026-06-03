@@ -32,6 +32,11 @@ export class ApplicationsController {
     return this.applicationsService.executeCommand(id, req.user.id, 'deploy_app_zip', { zipUrl: mockFileUrl });
   }
 
+  @Post(':id/github')
+  deployGithub(@Param('id') id: string, @Body() body: { repoUrl: string; branch: string }, @Request() req) {
+    return this.applicationsService.deployGithub(id, req.user.id, body.repoUrl, body.branch);
+  }
+
   @Post(':id/start')
   start(@Param('id') id: string, @Request() req) {
     return this.applicationsService.executeCommand(id, req.user.id, 'start_app');
